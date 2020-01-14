@@ -1,0 +1,172 @@
+setwd("C:\\Users\\shiva\\OneDrive\\Desktop\\Fall 2019 - sem1\\Big Data\\assgnmt2\\question3")
+getwd()
+
+#used decision tree as predictor
+library(rpart)
+
+#reading the csv data which has 23 featuree and 1000 instances
+# Data is of mushroom where we have to predict if it is edible or not
+datafile <- read.csv("mushroom.csv")
+datarep <- datafile
+
+#splitting the data according to the class label
+splitdata <- split(datarep, datarep$edibleornot)
+datap <- as.data.frame(splitdata[[2]])
+datae <- as.data.frame(splitdata[[1]])
+
+#separating data in 5 folds
+datap1 <- datap[1:100,]
+datap2 <- datap[101:200,]
+datap3 <- datap[201:300,]
+datap4 <- datap[301:400,]
+datap5 <- datap[401:500,]
+
+datae1 <- datae[1:100,]
+datae2 <- datae[101:200,]
+datae3 <- datae[201:300,]
+datae4 <- datae[301:400,]
+datae5 <- datae[401:500,]
+
+#merging the data with equal proportion for stratified cross validation
+df1 <- rbind(datap1,datae1)
+df2 <- rbind(datap2,datae2)
+df3 <- rbind(datap3,datae3)
+df4 <- rbind(datap4,datae4)
+df5 <- rbind(datap5,datae5)
+
+train1 <- rbind(df1,df2,df3,df4)
+test1 <-df5
+train2 <- rbind(df1,df2,df3,df5)
+test2 <-df4
+train3 <- rbind(df1,df2,df5,df4)
+test3 <-df3
+train4 <- rbind(df1,df5,df3,df4)
+test4 <-df2
+train5 <- rbind(df5,df2,df3,df4)
+test5 <-df1
+
+#dataframe sft will contain the selected column names for wrapper method
+sft <- setNames(data.frame(matrix(ncol = 1,nrow = 1 )), c("columnname"))
+totalcol <- colnames(datarep)
+previous_acc <- 0
+length(colnames(datarep))
+#column names in the dataset
+colnamesdata <- c("capshape","capsurface","capcolor","bruises","gillattachment","gillspacing","gillsize","gillcolor","stalkshape","stalkroot","stalksurfaceabovering","stalksurfacebelowring","stalkcolorabovering","stalkcolorbelowring","veiltype","veilcolor","ringnumber","ringtype","sporeprintcolor","population","habitat")
+row <-0
+valrow <- nrow(sft)
+
+#will iterate maximum until the length of our sequential forward selection is equal to 
+#the number of columns in the original dataset
+while(length(sft[complete.cases(sft), ]) < length(colnamesdata))
+{
+  oldavg <- 0
+  row <- row+1
+  #iteration with selection of each column name
+  for(i in (colnamesdata))
+  {
+    #condition if the dataframe containing selected features is empty or not.
+    #and if not empty then it will add the selected features with each feature and test the accuracy
+    # i.e. use the wrapper approach
+    if(length(sft[complete.cases(sft), ]) == 0)
+    {
+      
+      trainran1 = subset(train1, select=c(i,"edibleornot"))
+      trainran2 = subset(train2, select=c(i,"edibleornot"))
+      trainran3 = subset(train3, select=c(i,"edibleornot"))
+      trainran4 = subset(train4, select=c(i,"edibleornot"))
+      trainran5 = subset(train5, select=c(i,"edibleornot"))
+      testran1 = subset(test1, select=c(i,"edibleornot"))
+      testran2 = subset(test2, select=c(i,"edibleornot"))
+      testran3 = subset(test3, select=c(i,"edibleornot"))
+      testran4 = subset(test4, select=c(i,"edibleornot"))
+      testran5 = subset(test5, select=c(i,"edibleornot"))
+    }
+    else
+    {
+      sftcol = paste(sft$columnname, sep="\",\"")
+      trainran1 = subset(train1, select=c(i,sftcol,"edibleornot"))
+      trainran2 = subset(train2, select=c(i,sftcol,"edibleornot"))
+      trainran3 = subset(train3, select=c(i,sftcol,"edibleornot"))
+      trainran4 = subset(train4, select=c(i,sftcol,"edibleornot"))
+      trainran5 = subset(train5, select=c(i,sftcol,"edibleornot"))
+      testran1 = subset(test1, select=c(i,sftcol,"edibleornot"))
+      testran2 = subset(test2, select=c(i,sftcol,"edibleornot"))
+      testran3 = subset(test3, select=c(i,sftcol,"edibleornot"))
+      testran4 = subset(test4, select=c(i,sftcol,"edibleornot"))
+      testran5 = subset(test5, select=c(i,sftcol,"edibleornot"))
+    }
+    
+    ######## Random Forest #########
+    #stratified cross validation fold 1
+    trainran1$edibleornot<-as.factor(trainran1$edibleornot)
+    
+    set.seed(222)
+    fit <- rpart(edibleornot~., data = trainran1, method = 'class')
+    predict_unseen <- predict(fit, testran1, type = 'class')
+    table_mat <- table(testran1$edibleornot, predict_unseen)
+    accp1 <- sum(diag(table_mat)) / sum(table_mat)
+    
+    #stratified cross validation fold 2
+    trainran2$edibleornot<-as.factor(trainran2$edibleornot)
+    
+    set.seed(333)
+    fit <- rpart(edibleornot~., data = trainran2, method = 'class')
+    predict_unseen <- predict(fit, testran2, type = 'class')
+    table_mat <- table(testran2$edibleornot, predict_unseen)
+    accp2 <- sum(diag(table_mat)) / sum(table_mat)
+    
+    #stratified cross validation fold 3
+    trainran3$edibleornot<-as.factor(trainran3$edibleornot)
+    
+    set.seed(444)
+    fit <- rpart(edibleornot~., data = trainran3, method = 'class')
+    predict_unseen <- predict(fit, testran3, type = 'class')
+    table_mat <- table(testran3$edibleornot, predict_unseen)
+    accp3 <- sum(diag(table_mat)) / sum(table_mat)
+    
+    #stratified cross validation fold 4
+    trainran4$edibleornot<-as.factor(trainran4$edibleornot)
+    
+    set.seed(555)
+    fit <- rpart(edibleornot~., data = trainran4, method = 'class')
+    predict_unseen <- predict(fit, testran4, type = 'class')
+    table_mat <- table(testran4$edibleornot, predict_unseen)
+    accp4 <- sum(diag(table_mat)) / sum(table_mat)
+    
+    #stratified cross validation fold 5
+    trainran5$edibleornot<-as.factor(trainran5$edibleornot)
+    
+    set.seed(666)
+    fit <- rpart(edibleornot~., data = trainran5, method = 'class')
+    predict_unseen <- predict(fit, testran5, type = 'class')
+    table_mat <- table(testran5$edibleornot, predict_unseen)
+    accp5 <- sum(diag(table_mat)) / sum(table_mat)
+    
+    avg = mean(accp1,accp2,accp3,accp4,accp5)
+    
+    #checking if the accuracy predicted with the previous feature is higher or not.
+    #and if the accuracy calculated with the current feature is higher then it will store the value
+    #to check with other features and get the most important feature for this iteration
+    if(oldavg < avg)
+    {
+      oldavg <- avg
+      newfeature <- i
+    }
+  }
+  
+  #will check if after adding features the accuracy is decreasing or not.
+  #and if it is decreasing then we will stop the loop
+  if(previous_acc < oldavg)
+  {
+    previous_acc <- oldavg
+    sft[row,1] <- newfeature
+    colnamesdata <- colnamesdata[colnamesdata!=newfeature]
+  }
+  else
+  {
+    #will print the data and stop the loop
+    print(paste0(sft$columnname, collapse = ", "))
+    break;
+  }
+  
+}
